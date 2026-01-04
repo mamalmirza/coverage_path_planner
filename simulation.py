@@ -10,7 +10,7 @@ from stc import stc_coverage
 # ----------------------------
 GRID_SIZE = (20, 20)
 CELL_SIZE = 30
-OBSTACLE_PERCENT = 0.05
+OBSTACLE_PERCENT = 0.02
 FPS = 5
 STATUS_BAR_HEIGHT = 50
 

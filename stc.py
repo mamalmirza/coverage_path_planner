@@ -1,6 +1,7 @@
 import numpy as np
 from collections import deque
 from algorithms import bfs_path
+import heapq
 
 def stc_coverage(grid, robot_pos, state):
     """
@@ -51,44 +52,46 @@ def generate_stc_path(grid, start_pos):
         block = grid[r:r+2, c:c+2]
         return not np.any(block == 1) and not np.any(block == -1) # check for 1 or -1 (simulation uses different codes)
 
-    # 2. Build Minimum Spanning Tree (MST)
-    # We'll use a simple BFS/Prim's approach to build a tree on the graph of mega-cells
+    # 2. Build Minimum Spanning Tree (MST) using Prim's Algorithm with Directional Weights
+    # Weights: Horizontal = 10, Vertical = 1 (to encourage horizontal rows)
     start_gr, start_gc = start_pos[0] // 2, start_pos[1] // 2
     
-    # Adjacency list for the tree: parent -> list of children
-    # Actually, we just need edges or neighbors in the tree.
-    tree_adj = {} # (r,c) -> list of neighbors (r,c) in the tree
+    tree_adj = {} 
     visited = set()
-    queue = deque([(start_gr, start_gc)])
-    visited.add((start_gr, start_gc))
     
-    # Check if start is valid
+    # Priority Queue: (cost, r, c, parent_r, parent_c)
+    pq = [(0, start_gr, start_gc, -1, -1)]
+    
     if not is_free(start_gr, start_gc):
-        # Fallback if robot starts on obstacle/invalid (shouldn't happen in valid sim)
         return []
 
-    while queue:
-        curr = queue.popleft()
-        cr, cc = curr
+    while pq:
+        cost, cr, cc, pr, pc = heapq.heappop(pq)
         
-        # Try all 4 neighbors in random order for some variety, or fixed
-        neighbors = [(cr-1, cc), (cr+1, cc), (cr, cc-1), (cr, cc+1)]
-        # Filter valid and unvisited
-        valid_neighbors = []
-        for nr, nc in neighbors:
+        if (cr, cc) in visited:
+            continue
+            
+        visited.add((cr, cc))
+        
+        # Add edge to tree (if not root)
+        if pr != -1:
+            tree_adj.setdefault((pr, pc), []).append((cr, cc))
+            tree_adj.setdefault((cr, cc), []).append((pr, pc))
+            
+        # Add neighbors to PQ
+        # Neighbors: (r, c, cost_increment)
+        # Horizontal: cost 1, Vertical: cost 10
+        neighbors = [
+            (cr, cc-1, 1), (cr, cc+1, 1),   # Left, Right (Horizontal)
+            (cr-1, cc, 10), (cr+1, cc, 10)  # Up, Down (Vertical)
+        ]
+        
+        for nr, nc, move_cost in neighbors:
             if 0 <= nr < g_rows and 0 <= nc < g_cols and is_free(nr, nc):
                 if (nr, nc) not in visited:
-                    valid_neighbors.append((nr, nc))
-        
-        # For a spanning tree, we add ALL valid unvisited neighbors to the tree
-        # (This is effectively building a BFS tree, which is a spanning tree)
-        for nr, nc in valid_neighbors:
-            visited.add((nr, nc))
-            queue.append((nr, nc))
-            
-            # Add edge (undirected)
-            tree_adj.setdefault(curr, []).append((nr, nc))
-            tree_adj.setdefault((nr, nc), []).append(curr)
+                    # Pure Prim's: weight is just the edge weight
+                    # (Random tie-breaker added by heap order, or we could add random noise)
+                    heapq.heappush(pq, (move_cost, nr, nc, cr, cc))
 
     # 3. Circumnavigate the Tree to generate path
     # We simulate walking around the "walls" of the tree.
