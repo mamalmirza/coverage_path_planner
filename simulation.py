@@ -3,6 +3,7 @@ import numpy as np
 import sys
 import time
 from algorithms import lawn_mower, spiral_coverage, greedy_coverage
+from stc import stc_coverage
 
 # ----------------------------
 # PARAMETERS
@@ -30,6 +31,7 @@ grid = create_grid()
 robot_pos = [0, 0]
 grid[robot_pos[0], robot_pos[1]] = 2
 start_time = time.time()
+finished_time = None
 algo_state = {"path": []}
 
 # ----------------------------
@@ -66,8 +68,8 @@ def draw_button(rect, text, hover=False):
 # ----------------------------
 # SELECT ALGORITHM
 # ----------------------------
-# Options: lawn_mower, spiral_coverage, greedy_coverage
-current_algorithm = greedy_coverage
+# Options: lawn_mower, spiral_coverage, greedy_coverage, stc_coverage
+moving_algorithm = stc_coverage
 
 # ----------------------------
 # GAME LOOP
@@ -87,6 +89,7 @@ while running:
         robot_pos = [0, 0]
         grid[robot_pos[0], robot_pos[1]] = 2
         start_time = time.time()
+        finished_time = None
         algo_state = {"path": []}
 
     # ----------------------------
@@ -94,7 +97,7 @@ while running:
     # ----------------------------
     # MOVE ROBOT USING ALGORITHM
     # ----------------------------
-    next_pos = current_algorithm(grid, robot_pos, algo_state)
+    next_pos = moving_algorithm(grid, robot_pos, algo_state)
     robot_pos = list(next_pos)
     grid[robot_pos[0], robot_pos[1]] = 2
 
@@ -124,7 +127,15 @@ while running:
     total_free = np.sum(grid != 1)
     visited = np.sum(grid == 2)
     coverage_percent = (visited / total_free) * 100
-    elapsed_time = time.time() - start_time
+
+    if coverage_percent >= 100 and finished_time is None:
+        finished_time = time.time()
+
+    if finished_time:
+        elapsed_time = finished_time - start_time
+    else:
+        elapsed_time = time.time() - start_time
+        
     coverage_text = font.render(f"Coverage: {coverage_percent:.1f}%", True, (50, 50, 50))
     time_text = font.render(f"Time: {elapsed_time:.1f}s", True, (50, 50, 50))
     screen.blit(coverage_text, (10, GRID_SIZE[0]*CELL_SIZE + 10))
